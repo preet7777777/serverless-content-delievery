@@ -1,0 +1,18 @@
+{
+  "project": {
+    "environment": "local"
+  },
+  "frontend": {
+    "baseUrl": "http://localhost:5173",
+    "cdnBaseUrl": "http://localhost:4566/scd-optimized-assets-shared"
+  },
+  "api": {
+    "baseUrl": "http://localhost:8080"
+  },
+  "auth": {
+    "userPoolId": "local-bypass",
+    "userPoolClientId": "local-bypass-client",
+    "identityPoolId": "local-bypass-identity",
+    "cognitoDomain": "local-bypass"
+  }
+}

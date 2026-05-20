@@ -1,0 +1,19 @@
+FROM maven:3.9.9-eclipse-temurin-21 AS build
+WORKDIR /app
+COPY pom.xml pom.xml
+COPY shared/pom.xml shared/pom.xml
+COPY upload-url-lambda/pom.xml upload-url-lambda/pom.xml
+COPY image-processor-lambda/pom.xml image-processor-lambda/pom.xml
+COPY local-dev-runner/pom.xml local-dev-runner/pom.xml
+COPY shared/src shared/src
+COPY upload-url-lambda/src upload-url-lambda/src
+COPY image-processor-lambda/src image-processor-lambda/src
+COPY local-dev-runner/src local-dev-runner/src
+RUN mkdir -p /tmp/maven-repo
+RUN mvn -Dmaven.repo.local=/tmp/maven-repo -pl local-dev-runner -am clean package -DskipTests
+
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+COPY --from=build /app/local-dev-runner/target/local-dev-runner-1.0.0-SNAPSHOT.jar /app/local-dev-runner.jar
+EXPOSE 8080
+CMD ["java", "-jar", "/app/local-dev-runner.jar"]

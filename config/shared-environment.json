@@ -1,0 +1,45 @@
+{
+  "project": {
+    "name": "serverless-content-delivery",
+    "environment": "shared",
+    "awsRegion": "ap-south-1"
+  },
+  "frontend": {
+    "appName": "Serverless Content Delivery",
+    "baseUrl": "http://localhost:5173",
+    "cdnBaseUrl": "https://cdn.example.com",
+    "allowedMimeTypes": [
+      "image/jpeg",
+      "image/png",
+      "image/webp"
+    ],
+    "maxUploadSizeBytes": 10485760
+  },
+  "api": {
+    "baseUrl": "https://api.example.com",
+    "uploadUrlPath": "/v1/uploads/presign",
+    "requestTimeoutMs": 10000
+  },
+  "auth": {
+    "provider": "cognito",
+    "userPoolId": "ap-south-1_dummyPool",
+    "userPoolClientId": "dummyclientid123456",
+    "identityPoolId": "ap-south-1:00000000-0000-0000-0000-000000000000",
+    "cognitoDomain": "serverless-content-delivery-dev"
+  },
+  "storage": {
+    "rawBucketName": "scd-raw-assets-shared",
+    "optimizedBucketName": "scd-optimized-assets-shared",
+    "rawPrefix": "raw/",
+    "optimizedPrefix": "optimized/",
+    "thumbnailPrefix": "thumbnails/"
+  },
+  "delivery": {
+    "cloudFrontPriceClass": "PriceClass_100",
+    "cacheTtlSeconds": 86400
+  },
+  "observability": {
+    "logLevel": "INFO",
+    "metricsNamespace": "ServerlessContentDelivery"
+  }
+}

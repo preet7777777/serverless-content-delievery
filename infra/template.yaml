@@ -1,0 +1,210 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Serverless content delivery platform with Cognito-backed control plane.
+
+Parameters:
+  EnvironmentName:
+    Type: String
+  AwsRegion:
+    Type: String
+  RawBucketName:
+    Type: String
+  OptimizedBucketName:
+    Type: String
+  RawPrefix:
+    Type: String
+  OptimizedPrefix:
+    Type: String
+  ThumbnailPrefix:
+    Type: String
+  CognitoUserPoolId:
+    Type: String
+  CognitoUserPoolClientId:
+    Type: String
+  CognitoIdentityPoolId:
+    Type: String
+  CognitoDomain:
+    Type: String
+  CloudFrontPriceClass:
+    Type: String
+  CacheTtlSeconds:
+    Type: Number
+  MetricsNamespace:
+    Type: String
+  LogLevel:
+    Type: String
+
+Globals:
+  Function:
+    Runtime: java21
+    MemorySize: 1024
+    Timeout: 15
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        AWS_REGION: !Ref AwsRegion
+        RAW_BUCKET_NAME: !Ref RawBucketName
+        OPTIMIZED_BUCKET_NAME: !Ref OptimizedBucketName
+        RAW_PREFIX: !Ref RawPrefix
+        OPTIMIZED_PREFIX: !Ref OptimizedPrefix
+        THUMBNAIL_PREFIX: !Ref ThumbnailPrefix
+        CDN_BASE_URL: !Sub 'https://${AssetDistribution.DomainName}'
+        ALLOWED_MIME_TYPES: image/jpeg,image/png,image/webp
+        MAX_UPLOAD_SIZE_BYTES: '10485760'
+        UPLOAD_URL_TTL_SECONDS: '300'
+        METRICS_NAMESPACE: !Ref MetricsNamespace
+        LOG_LEVEL: !Ref LogLevel
+
+Resources:
+  RawAssetsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref RawBucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  OptimizedAssetsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref OptimizedBucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  UploadUrlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/upload-url-lambda
+      Handler: com.serverless.contentdelivery.upload.UploadUrlHandler::handleRequest
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref RawBucketName
+      Events:
+        CreateUploadUrl:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ControlPlaneApi
+            Path: /v1/uploads/presign
+            Method: post
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  ImageProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/image-processor-lambda
+      Handler: com.serverless.contentdelivery.processor.ImageProcessorHandler::handleRequest
+      MemorySize: 2048
+      Timeout: 60
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref RawBucketName
+        - S3CrudPolicy:
+            BucketName: !Ref OptimizedBucketName
+      Events:
+        RawAssetCreated:
+          Type: S3
+          Properties:
+            Bucket: !Ref RawAssetsBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: !Ref RawPrefix
+
+  ControlPlaneApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref EnvironmentName
+      Cors:
+        AllowMethods: "'POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !Sub arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${CognitoUserPoolId}
+
+  OriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${EnvironmentName}-asset-oac'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  OptimizedAssetsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref OptimizedAssetsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontReadAccess
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${OptimizedAssetsBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${AssetDistribution}'
+
+  AssetCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub '${EnvironmentName}-asset-cache-policy'
+        DefaultTTL: !Ref CacheTtlSeconds
+        MaxTTL: 31536000
+        MinTTL: 60
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          EnableAcceptEncodingBrotli: true
+          EnableAcceptEncodingGzip: true
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+
+  AssetDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        PriceClass: !Ref CloudFrontPriceClass
+        DefaultCacheBehavior:
+          TargetOriginId: optimized-assets-origin
+          ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: !Ref AssetCachePolicy
+          ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03
+        Origins:
+          - Id: optimized-assets-origin
+            DomainName: !GetAtt OptimizedAssetsBucket.RegionalDomainName
+            S3OriginConfig: {}
+            OriginAccessControlId: !Ref OriginAccessControl
+        DefaultRootObject: ''
+
+Outputs:
+  ApiUrl:
+    Value: !Sub 'https://${ControlPlaneApi}.execute-api.${AWS::Region}.amazonaws.com/${EnvironmentName}'
+  CloudFrontDomainName:
+    Value: !GetAtt AssetDistribution.DomainName

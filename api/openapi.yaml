@@ -1,0 +1,96 @@
+openapi: 3.0.3
+info:
+  title: Serverless Content Delivery Control Plane API
+  version: 1.0.0
+  description: >
+    Control-plane API for requesting short-lived upload permissions for direct-to-S3 image uploads.
+servers:
+  - url: https://api.example.com
+paths:
+  /v1/uploads/presign:
+    post:
+      summary: Create a short-lived pre-signed upload URL
+      description: >
+        Authenticated clients call this endpoint before uploading an image.
+        The backend validates the requested file metadata, generates a server-controlled object key,
+        and returns a pre-signed S3 URL scoped to one upload action.
+      operationId: createPresignedUploadUrl
+      security:
+        - cognitoJwt: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadAuthorizationRequest'
+      responses:
+        '200':
+          description: Upload URL created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadAuthorizationResponse'
+        '400':
+          description: The request was invalid.
+        '401':
+          description: The caller is not authenticated.
+        '415':
+          description: The requested content type is not supported.
+components:
+  securitySchemes:
+    cognitoJwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Amazon Cognito access token used to authorize upload requests.
+  schemas:
+    UploadAuthorizationRequest:
+      type: object
+      required:
+        - fileName
+        - contentType
+        - sizeBytes
+      properties:
+        fileName:
+          type: string
+          description: Original client-side file name for extension inference and audit logging.
+        contentType:
+          type: string
+          description: MIME type that must match the eventual upload.
+        sizeBytes:
+          type: integer
+          format: int64
+          description: Declared file size used for validation and enforcement.
+    UploadAuthorizationResponse:
+      type: object
+      required:
+        - objectKey
+        - uploadUrl
+        - expiresAt
+        - assetBaseUrl
+        - optimizedAssetUrl
+        - thumbnailAssetUrl
+      properties:
+        objectKey:
+          type: string
+          description: Server-generated S3 object key under the raw upload prefix.
+        uploadUrl:
+          type: string
+          format: uri
+          description: Short-lived pre-signed PUT URL for direct upload.
+        expiresAt:
+          type: string
+          format: date-time
+          description: Absolute expiration time for the pre-signed upload URL.
+        assetBaseUrl:
+          type: string
+          format: uri
+          description: Base CDN URL where derived assets will eventually be served.
+        optimizedAssetUrl:
+          type: string
+          format: uri
+          description: Concrete URL for the optimized image asset that the processor will publish.
+        thumbnailAssetUrl:
+          type: string
+          format: uri
+          description: Concrete URL for the derived thumbnail asset that the processor will publish.

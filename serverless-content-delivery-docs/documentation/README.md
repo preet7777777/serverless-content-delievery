@@ -114,6 +114,8 @@ Start with the business and architecture documents, then move into service-speci
 ## Diagram Library
 
 - [diagrams/architecture-overview.md](../diagrams/architecture-overview.md)
+- [diagrams/local-development-architecture.md](../diagrams/local-development-architecture.md)
+- [diagrams/production-aws-architecture.md](../diagrams/production-aws-architecture.md)
 - [diagrams/request-sequence.md](../diagrams/request-sequence.md)
 - [diagrams/data-lifecycle.md](../diagrams/data-lifecycle.md)
 

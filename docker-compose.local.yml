@@ -1,0 +1,59 @@
+services:
+  localstack:
+    image: localstack/localstack:3.5
+    container_name: scd-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: s3
+      AWS_DEFAULT_REGION: ap-south-1
+      DEBUG: 1
+    volumes:
+      - ./docker/localstack/init:/etc/localstack/init/ready.d
+      - localstack-data:/var/lib/localstack
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  backend-local:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.local
+    container_name: scd-backend-local
+    depends_on:
+      localstack:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      AWS_REGION: ap-south-1
+      RAW_BUCKET_NAME: scd-raw-assets-shared
+      OPTIMIZED_BUCKET_NAME: scd-optimized-assets-shared
+      RAW_PREFIX: raw/
+      OPTIMIZED_PREFIX: optimized/
+      THUMBNAIL_PREFIX: thumbnails/
+      S3_ENDPOINT_OVERRIDE: http://localstack:4566
+      CDN_BASE_URL: http://localhost:4566/scd-optimized-assets-shared
+      ALLOWED_MIME_TYPES: image/jpeg,image/png,image/webp
+      MAX_UPLOAD_SIZE_BYTES: "10485760"
+      UPLOAD_URL_TTL_SECONDS: "300"
+      LOCAL_PROCESSOR_POLL_INTERVAL_SECONDS: "3"
+      LOCAL_AUTH_BYPASS_ENABLED: "true"
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_SESSION_TOKEN: test
+
+  frontend-local:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.local
+    container_name: scd-frontend-local
+    depends_on:
+      - backend-local
+    ports:
+      - "5173:5173"
+
+volumes:
+  localstack-data:

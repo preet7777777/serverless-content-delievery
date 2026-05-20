@@ -1,0 +1,138 @@
+:root {
+  font-family: "Segoe UI", sans-serif;
+  color: #132238;
+  background:
+    radial-gradient(circle at top left, rgba(255, 216, 168, 0.8), transparent 35%),
+    linear-gradient(135deg, #f8f3ea 0%, #eef4fb 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 3rem 1.5rem;
+}
+
+.hero {
+  max-width: 56rem;
+  margin: 0 auto 2rem;
+}
+
+.hero h1 {
+  margin: 0.25rem 0 0.75rem;
+  font-size: clamp(2.4rem, 6vw, 4.8rem);
+}
+
+.hero-copy {
+  max-width: 48rem;
+  line-height: 1.6;
+}
+
+.eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.75rem;
+  color: #8a4b14;
+}
+
+.grid-layout {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  max-width: 72rem;
+  margin: 0 auto;
+}
+
+.panel {
+  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid rgba(19, 34, 56, 0.08);
+  border-radius: 24px;
+  padding: 1.5rem;
+  box-shadow: 0 24px 48px rgba(19, 34, 56, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.muted-panel {
+  color: #4f6075;
+}
+
+.panel-header h2 {
+  margin: 0.4rem 0 0.8rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.55rem;
+  margin: 1.25rem 0;
+}
+
+.field input {
+  border: 1px solid rgba(19, 34, 56, 0.16);
+  border-radius: 14px;
+  padding: 0.9rem;
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.primary-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.95rem 1.3rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #d4631b 0%, #e59f35 100%);
+  color: white;
+  cursor: pointer;
+}
+
+.primary-button:disabled {
+  cursor: progress;
+  opacity: 0.72;
+}
+
+.details-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.asset-preview {
+  width: 100%;
+  max-width: 260px;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 18px;
+  border: 1px solid rgba(19, 34, 56, 0.08);
+  margin: 0 0 1.25rem;
+  background: rgba(19, 34, 56, 0.04);
+}
+
+.details-grid dt {
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.details-grid dd {
+  margin: 0;
+  color: #4f6075;
+  overflow-wrap: anywhere;
+}
+
+.details-grid a {
+  color: #8a4b14;
+}
+
+.error-text {
+  color: #ab1f1f;
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    padding: 1.5rem 1rem 2rem;
+  }
+}
